@@ -88,11 +88,11 @@ export function LaudoUpload({ solicitacaoId, onUploadSuccess }: LaudoUploadProps
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-lg lg:text-xl font-bold shadow-lg mt-4 flex items-center justify-center gap-2">
-          <FileUp className="w-6 h-6" />
-          Liberar com Laudo
-        </Button>
+      <DialogTrigger
+        render={<Button className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-lg lg:text-xl font-bold shadow-lg mt-4 flex items-center justify-center gap-2" />}
+      >
+        <FileUp className="w-6 h-6" />
+        Liberar com Laudo
       </DialogTrigger>
       <DialogContent className="sm:max-w-md border-0 shadow-2xl rounded-xl">
         <DialogHeader>
