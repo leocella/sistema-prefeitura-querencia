@@ -66,7 +66,8 @@ export function DashboardClient({ role, prestadorId }: DashboardClientProps) {
       if (error) throw error
       setSolicitacoes(data || [])
     } catch (error) {
-      toast.error(error.message || "Erro ao buscar as solicitações.")
+      const err = error as any
+      toast.error(err?.message || "Erro ao buscar as solicitações.")
       console.error("Supabase Error Details:", JSON.stringify(error, null, 2))
     } finally {
       setIsLoading(false)
