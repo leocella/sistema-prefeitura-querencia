@@ -39,6 +39,15 @@ export default async function DashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
+            {role === 'admin' && (
+              <Link
+                href="/admin/medicos"
+                className="inline-flex items-center gap-2 bg-slate-100 dark:bg-muted hover:bg-slate-200 dark:hover:bg-muted/80 text-slate-700 dark:text-foreground text-sm font-semibold px-4 py-2 rounded-lg transition-colors border border-slate-200 dark:border-border"
+              >
+                <span className="hidden sm:inline">Gestão de Médicos</span>
+                <span className="sm:hidden">Médicos</span>
+              </Link>
+            )}
             <Link
               href="/nova-solicitacao"
               className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-md shadow-blue-200 dark:shadow-blue-900/30 transition-colors"

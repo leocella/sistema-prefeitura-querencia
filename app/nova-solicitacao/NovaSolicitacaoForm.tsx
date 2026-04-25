@@ -102,17 +102,29 @@ const CATEGORIAS_EXAMES = [
 
 const TODOS_EXAMES = CATEGORIAS_EXAMES.flatMap((c) => c.exames)
 
-interface Props {
-  prestadores: { id: string; nome: string }[]
+interface Medico {
+  id: string
+  nome: string
+  crm: string
+  especialidade: string | null
 }
 
-export function NovaSolicitacaoForm({ prestadores }: Props) {
+interface Props {
+  prestadores: { id: string; nome: string }[]
+  medicos: Medico[]
+}
+
+export function NovaSolicitacaoForm({ prestadores, medicos }: Props) {
   // ── Patient data ──
   const [nomePaciente, setNomePaciente] = useState("")
   const [dataNascimento, setDataNascimento] = useState("")
   const [classificacao, setClassificacao] = useState<"internamento" | "emergencia">("internamento")
   const [medicoSolicitante, setMedicoSolicitante] = useState("")
   const [prestadorId, setPrestadorId] = useState("")
+
+  // ── Medico search ──
+  const [buscaMedico, setBuscaMedico] = useState("")
+  const [showMedicoDropdown, setShowMedicoDropdown] = useState(false)
 
   // ── Selected exams ──
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
@@ -427,14 +439,57 @@ export function NovaSolicitacaoForm({ prestadores }: Props) {
               <option value="emergencia">🚨 Emergência</option>
             </select>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="medico" className="text-slate-600">Médico Solicitante</Label>
+          <div className="space-y-1.5 relative">
+            <Label className="text-slate-600 dark:text-muted-foreground">Médico Solicitante *</Label>
             <Input
-              id="medico"
-              placeholder="Ex: Dr. Alceu"
-              value={medicoSolicitante}
-              onChange={(e) => setMedicoSolicitante(e.target.value)}
+              placeholder="Buscar por nome ou CRM..."
+              value={buscaMedico}
+              onChange={(e) => {
+                setBuscaMedico(e.target.value)
+                setShowMedicoDropdown(true)
+                if (!e.target.value.trim()) setMedicoSolicitante("")
+              }}
+              onFocus={() => setShowMedicoDropdown(true)}
+              className="dark:bg-input/30"
             />
+            {medicoSolicitante && !showMedicoDropdown && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">✓ {medicoSolicitante}</p>
+            )}
+            {showMedicoDropdown && buscaMedico.trim().length > 0 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {medicos
+                  .filter((m) => {
+                    const termo = buscaMedico.toLowerCase()
+                    return m.nome.toLowerCase().includes(termo) || m.crm.toLowerCase().includes(termo)
+                  })
+                  .map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        const label = `Dr(a). ${m.nome} (CRM: ${m.crm})`
+                        setMedicoSolicitante(label)
+                        setBuscaMedico(m.nome)
+                        setShowMedicoDropdown(false)
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-muted/50 text-sm transition-colors flex flex-col"
+                    >
+                      <span className="font-medium text-slate-800 dark:text-foreground">Dr(a). {m.nome}</span>
+                      <span className="text-xs text-slate-500 dark:text-muted-foreground">
+                        CRM: {m.crm}{m.especialidade ? ` • ${m.especialidade}` : ""}
+                      </span>
+                    </button>
+                  ))}
+                {medicos.filter((m) => {
+                  const termo = buscaMedico.toLowerCase()
+                  return m.nome.toLowerCase().includes(termo) || m.crm.toLowerCase().includes(termo)
+                }).length === 0 && (
+                  <div className="px-3 py-3 text-sm text-slate-400 dark:text-muted-foreground text-center">
+                    Nenhum médico encontrado. Cadastre em Gestão de Médicos.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label className="text-slate-600">Laboratório Executor *</Label>
