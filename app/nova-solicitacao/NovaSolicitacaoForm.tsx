@@ -1,13 +1,15 @@
 "use client"
 
-import { useState, useRef, useMemo } from "react"
+import { useState, useRef, useMemo, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { Printer, Search, FileText, User, Stethoscope, Check, Loader2 } from "lucide-react"
+import { Printer, Search, FileText, User, Stethoscope, Check, Loader2, History } from "lucide-react"
 import { createClient } from "@/lib/supabase"
+import { calcularIdade } from "@/lib/calcularIdade"
 
 // ──────────────────────────────────────────────
 // Lista de exames organizados por categoria
@@ -118,9 +120,18 @@ export function NovaSolicitacaoForm({ prestadores, medicos }: Props) {
   // ── Patient data ──
   const [nomePaciente, setNomePaciente] = useState("")
   const [dataNascimento, setDataNascimento] = useState("")
+  const [cpf, setCpf] = useState("")
   const [classificacao, setClassificacao] = useState<"internamento" | "emergencia">("internamento")
   const [medicoSolicitante, setMedicoSolicitante] = useState("")
   const [prestadorId, setPrestadorId] = useState("")
+
+  // ── History & summary ──
+  const idadeCalculada = dataNascimento ? calcularIdade(dataNascimento) : null
+  const [historicoCount, setHistoricoCount] = useState(0)
+  const [isLoadingHistorico, setIsLoadingHistorico] = useState(false)
+  const [pacienteIdHistorico, setPacienteIdHistorico] = useState<string | null>(null)
+  const [showHistoricoModal, setShowHistoricoModal] = useState(false)
+  const [historicoExames, setHistoricoExames] = useState<any[]>([])
 
   // ── Medico search ──
   const [buscaMedico, setBuscaMedico] = useState("")
@@ -150,7 +161,72 @@ export function NovaSolicitacaoForm({ prestadores, medicos }: Props) {
     })).filter((cat) => cat.exames.length > 0)
   }, [busca])
 
+  // ── Effects ──
+  useEffect(() => {
+    async function checkHistorico() {
+      const rawCpf = cpf.replace(/\D/g, "")
+      if (rawCpf.length === 11) {
+        setIsLoadingHistorico(true)
+        try {
+          const { data: paciente } = await supabase
+            .from("pacientes")
+            .select("id, nome_completo, data_nascimento")
+            .eq("cpf", cpf)
+            .maybeSingle()
+
+          if (paciente) {
+            if (!nomePaciente) setNomePaciente(paciente.nome_completo)
+            if (!dataNascimento) setDataNascimento(paciente.data_nascimento)
+            setPacienteIdHistorico(paciente.id)
+
+            const { count } = await supabase
+              .from("solicitacoes")
+              .select("*", { count: "exact", head: true })
+              .eq("paciente_id", paciente.id)
+
+            setHistoricoCount(count || 0)
+          } else {
+            setHistoricoCount(0)
+            setPacienteIdHistorico(null)
+          }
+        } finally {
+          setIsLoadingHistorico(false)
+        }
+      } else {
+        setHistoricoCount(0)
+        setPacienteIdHistorico(null)
+      }
+    }
+    checkHistorico()
+  }, [cpf, supabase, nomePaciente, dataNascimento])
+
   // ── Handlers ──
+  function handleCpfChange(e: React.ChangeEvent<HTMLInputElement>) {
+    let value = e.target.value.replace(/\D/g, "")
+    if (value.length > 11) value = value.slice(0, 11)
+    
+    // Mask: 000.000.000-00
+    if (value.length > 9) {
+      value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{2}).*/, "$1.$2.$3-$4")
+    } else if (value.length > 6) {
+      value = value.replace(/^(\d{3})(\d{3})(\d{1,3}).*/, "$1.$2.$3")
+    } else if (value.length > 3) {
+      value = value.replace(/^(\d{3})(\d{1,3}).*/, "$1.$2")
+    }
+    setCpf(value)
+  }
+
+  async function openHistorico() {
+    if (!pacienteIdHistorico) return
+    setShowHistoricoModal(true)
+    const { data } = await supabase
+      .from("solicitacoes")
+      .select("id, codigo_barras, data_prevista, prestadores(nome)")
+      .eq("paciente_id", pacienteIdHistorico)
+      .order("data_prevista", { ascending: false })
+    
+    if (data) setHistoricoExames(data)
+  }
   function toggleExame(exame: string) {
     setSelecionados((prev) => {
       const next = new Set(prev)
@@ -199,24 +275,49 @@ export function NovaSolicitacaoForm({ prestadores, medicos }: Props) {
 
     try {
       // 1. Criar ou buscar paciente
-      const { data: pacienteExistente } = await supabase
-        .from('pacientes')
-        .select('id')
-        .eq('nome_completo', nomePaciente.trim())
-        .eq('data_nascimento', dataNascimento)
-        .maybeSingle()
+      let pacienteId = null
 
-      let pacienteId = pacienteExistente?.id
+      if (cpf.length === 14) {
+        // Tenta achar por CPF primeiro
+        const { data: pacienteExistente } = await supabase
+          .from('pacientes')
+          .select('id')
+          .eq('cpf', cpf)
+          .maybeSingle()
+        pacienteId = pacienteExistente?.id
+      }
+
+      if (!pacienteId) {
+        // Tenta achar por nome e data de nascimento se CPF não achou ou não foi fornecido
+        const { data: pacientePorNome } = await supabase
+          .from('pacientes')
+          .select('id')
+          .eq('nome_completo', nomePaciente.trim())
+          .eq('data_nascimento', dataNascimento)
+          .maybeSingle()
+        pacienteId = pacientePorNome?.id
+      }
 
       if (!pacienteId) {
         const { data: novoPaciente, error: errPaciente } = await supabase
           .from('pacientes')
-          .insert({ nome_completo: nomePaciente.trim(), data_nascimento: dataNascimento })
+          .insert({ 
+            nome_completo: nomePaciente.trim(), 
+            data_nascimento: dataNascimento,
+            cpf: cpf.length === 14 ? cpf : null
+          })
           .select('id')
           .single()
 
         if (errPaciente) throw errPaciente
         pacienteId = novoPaciente.id
+      } else if (cpf.length === 14) {
+        // Se achou o paciente mas ele não tinha CPF, atualiza
+        await supabase
+          .from('pacientes')
+          .update({ cpf })
+          .eq('id', pacienteId)
+          .is('cpf', null)
       }
 
       // 2. Gerar código de barras sequencial
@@ -402,43 +503,81 @@ export function NovaSolicitacaoForm({ prestadores, medicos }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* ── Dados do Paciente ── */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <div className="flex items-center gap-2 mb-5">
-          <User className="w-5 h-5 text-blue-600" />
-          <h2 className="text-sm uppercase tracking-widest font-bold text-slate-500">Dados do Paciente</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2 space-y-1.5">
-            <Label htmlFor="nome-paciente" className="text-slate-600">Nome Completo do Paciente *</Label>
-            <Input
-              id="nome-paciente"
-              placeholder="Ex: João Carlos Santos"
-              value={nomePaciente}
-              onChange={(e) => setNomePaciente(e.target.value)}
-              className="text-base"
-            />
+      {/* ── Formulário do Paciente e Resumo ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Lado Esquerdo: Formulário */}
+        <div className="md:col-span-2 bg-white dark:bg-card rounded-2xl shadow-sm border border-slate-200 dark:border-border p-6 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <User className="w-5 h-5 text-blue-600" />
+            <h2 className="text-sm uppercase tracking-widest font-bold text-slate-500 dark:text-muted-foreground">Formulário da Solicitação</h2>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="data-nascimento" className="text-slate-600">Data de Nascimento *</Label>
-            <Input
-              id="data-nascimento"
-              type="date"
-              value={dataNascimento}
-              onChange={(e) => setDataNascimento(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-slate-600">Classificação *</Label>
-            <select
-              value={classificacao}
-              onChange={(e) => setClassificacao(e.target.value as "internamento" | "emergencia")}
-              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="internamento">🏥 Internamento</option>
-              <option value="emergencia">🚨 Emergência</option>
-            </select>
-          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="cpf" className="text-slate-600 dark:text-muted-foreground">CPF do Paciente</Label>
+              <Input
+                id="cpf"
+                placeholder="000.000.000-00"
+                value={cpf}
+                onChange={handleCpfChange}
+                className="dark:bg-input/30 max-w-sm"
+              />
+              {isLoadingHistorico ? (
+                <p className="text-xs text-slate-400 dark:text-muted-foreground mt-1 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Verificando histórico...
+                </p>
+              ) : historicoCount > 0 ? (
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-md bg-amber-50 dark:bg-amber-900/30 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 ring-1 ring-inset ring-amber-600/20">
+                    Paciente já atendido {historicoCount} vez(es)
+                  </span>
+                  <button 
+                    type="button" 
+                    onClick={openHistorico}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium"
+                  >
+                    <History className="w-3 h-3" /> Ver histórico
+                  </button>
+                </div>
+              ) : cpf.length === 14 ? (
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1">✓ Primeiro atendimento</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="nome-paciente" className="text-slate-600 dark:text-muted-foreground">Nome Completo do Paciente *</Label>
+              <Input
+                id="nome-paciente"
+                placeholder="Ex: João Carlos Santos"
+                value={nomePaciente}
+                onChange={(e) => setNomePaciente(e.target.value)}
+                className="text-base dark:bg-input/30"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="data-nascimento" className="text-slate-600 dark:text-muted-foreground">Data de Nascimento *</Label>
+              <Input
+                id="data-nascimento"
+                type="date"
+                value={dataNascimento}
+                onChange={(e) => setDataNascimento(e.target.value)}
+                className="dark:bg-input/30"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-slate-600 dark:text-muted-foreground">Classificação *</Label>
+              <select
+                value={classificacao}
+                onChange={(e) => setClassificacao(e.target.value as "internamento" | "emergencia")}
+                className="flex h-9 w-full rounded-lg border border-input dark:border-border dark:bg-input/30 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="internamento">🏥 Internamento</option>
+                <option value="emergencia">🚨 Emergência</option>
+              </select>
+            </div>
           <div className="space-y-1.5 relative">
             <Label className="text-slate-600 dark:text-muted-foreground">Médico Solicitante *</Label>
             <Input
@@ -491,20 +630,58 @@ export function NovaSolicitacaoForm({ prestadores, medicos }: Props) {
               </div>
             )}
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-slate-600">Laboratório Executor *</Label>
-            <select
-              value={prestadorId}
-              onChange={(e) => setPrestadorId(e.target.value)}
-              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="">Selecione o laboratório...</option>
-              {prestadores.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
-            </select>
+            <div className="space-y-1.5">
+              <Label className="text-slate-600 dark:text-muted-foreground">Laboratório Executor *</Label>
+              <select
+                value={prestadorId}
+                onChange={(e) => setPrestadorId(e.target.value)}
+                className="flex h-9 w-full rounded-lg border border-input dark:border-border dark:bg-input/30 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Selecione o laboratório...</option>
+                {prestadores.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Lado Direito: Resumo do Paciente */}
+        <div className="md:col-span-1 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800 rounded-2xl shadow-sm border border-blue-100 dark:border-slate-700 p-6 flex flex-col relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <User className="w-24 h-24 text-blue-600" />
+          </div>
+          <h3 className="text-sm uppercase tracking-widest font-bold text-blue-600 dark:text-blue-400 mb-6">Resumo do Paciente</h3>
+          
+          <div className="space-y-5 flex-1 relative z-10">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nome Completo</p>
+              <p className="font-medium text-slate-800 dark:text-slate-200 mt-1 line-clamp-2">
+                {nomePaciente || <span className="text-slate-400 dark:text-slate-500 italic">Não informado</span>}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Idade</p>
+                <p className="font-medium text-slate-800 dark:text-slate-200 mt-1">
+                  {idadeCalculada !== null ? `${idadeCalculada} anos` : <span className="text-slate-400 dark:text-slate-500 italic">--</span>}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nascimento</p>
+                <p className="font-medium text-slate-800 dark:text-slate-200 mt-1">
+                  {dataNascimento ? new Date(dataNascimento).toLocaleDateString('pt-BR') : <span className="text-slate-400 dark:text-slate-500 italic">--</span>}
+                </p>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CPF</p>
+              <p className="font-medium text-slate-800 dark:text-slate-200 mt-1">
+                {cpf || <span className="text-slate-400 dark:text-slate-500 italic">Não informado</span>}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -682,6 +859,45 @@ export function NovaSolicitacaoForm({ prestadores, medicos }: Props) {
           </div>
         </div>
       )}
+      {/* ── Dialog de Histórico ── */}
+      <Dialog open={showHistoricoModal} onOpenChange={setShowHistoricoModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-blue-600" />
+              Histórico do Paciente
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="bg-slate-50 dark:bg-muted p-3 rounded-md text-sm">
+              <span className="font-semibold">{nomePaciente}</span> • {idadeCalculada} anos<br/>
+              <span className="text-slate-500 dark:text-muted-foreground">CPF: {cpf}</span>
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
+              {historicoExames.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">Nenhum exame encontrado.</p>
+              ) : (
+                historicoExames.map((solic) => (
+                  <div key={solic.id} className="border border-slate-200 dark:border-border p-3 rounded-lg flex justify-between items-center text-sm">
+                    <div>
+                      <p className="font-semibold text-slate-800 dark:text-foreground">
+                        {new Date(solic.data_prevista).toLocaleDateString("pt-BR")}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-muted-foreground">{solic.prestadores?.nome}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-mono bg-slate-100 dark:bg-muted px-2 py-1 rounded">
+                        {solic.codigo_barras}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
