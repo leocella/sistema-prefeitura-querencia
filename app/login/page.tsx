@@ -43,19 +43,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-background flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Decorative elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
-      <Card className="w-full max-w-md p-8 bg-white/80 backdrop-blur-xl border-white/20 shadow-2xl z-10 rounded-2xl relative">
+      <Card className="w-full max-w-md p-8 bg-white/80 dark:bg-card/90 backdrop-blur-xl border-white/20 dark:border-border shadow-2xl z-10 rounded-2xl relative">
         <div className="flex flex-col items-center justify-center mb-8 gap-3">
           <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 shadow-inner">
             <Beaker className="w-8 h-8" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Portal do Laboratório</h1>
-            <p className="text-sm text-slate-500 mt-1">Prefeitura de Querência / MT</p>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-foreground tracking-tight">Portal do Laboratório</h1>
+            <p className="text-sm text-slate-500 dark:text-muted-foreground mt-1">Prefeitura de Querência / MT</p>
           </div>
         </div>
 

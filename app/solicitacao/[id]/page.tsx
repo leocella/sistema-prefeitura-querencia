@@ -35,35 +35,35 @@ export default async function SolicitacaoPage({ params }: { params: Promise<{ id
   const idade = calcularIdade(paciente?.data_nascimento || new Date())
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-12">
+    <div className="min-h-screen bg-slate-50 dark:bg-background pb-12">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm px-4 lg:px-8 h-16 flex items-center gap-4">
+      <header className="bg-white dark:bg-card border-b border-slate-200 dark:border-border sticky top-0 z-30 shadow-sm px-4 lg:px-8 h-16 flex items-center gap-4">
         <Link href="/dashboard" className="text-sm font-semibold text-primary hover:underline">
           &larr; Voltar ao Dashboard
         </Link>
         <span className="text-slate-300">|</span>
-        <h1 className="font-bold tracking-tight text-slate-800">Detalhes # {solicitacao.codigo_barras}</h1>
+        <h1 className="font-bold tracking-tight text-slate-800 dark:text-foreground">Detalhes # {solicitacao.codigo_barras}</h1>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 mt-8 space-y-6">
         
         {/* Paciente Info Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-sm uppercase tracking-widest font-bold text-slate-400 mb-4">Dados do Paciente</h2>
+        <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-slate-200 dark:border-border p-6">
+          <h2 className="text-sm uppercase tracking-widest font-bold text-slate-400 dark:text-muted-foreground mb-4">Dados do Paciente</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <p className="text-sm text-slate-500 mb-1">Nome Completo</p>
-              <p className="font-bold text-lg text-slate-800">{paciente?.nome_completo}</p>
+              <p className="text-sm text-slate-500 dark:text-muted-foreground mb-1">Nome Completo</p>
+              <p className="font-bold text-lg text-slate-800 dark:text-foreground">{paciente?.nome_completo}</p>
             </div>
             <div>
-              <p className="text-sm text-slate-500 mb-1">Nascimento e Idade</p>
-              <p className="font-semibold text-slate-800">
-                {paciente?.data_nascimento ? new Date(paciente.data_nascimento).toLocaleDateString('pt-BR') : '--'} <span className="font-normal text-slate-500">· {idade} anos</span>
+              <p className="text-sm text-slate-500 dark:text-muted-foreground mb-1">Nascimento e Idade</p>
+              <p className="font-semibold text-slate-800 dark:text-foreground">
+                {paciente?.data_nascimento ? new Date(paciente.data_nascimento).toLocaleDateString('pt-BR') : '--'} <span className="font-normal text-slate-500 dark:text-muted-foreground">· {idade} anos</span>
               </p>
             </div>
             <div>
-              <p className="text-sm text-slate-500 mb-1">CPF</p>
-              <p className="font-semibold text-slate-800">{paciente?.cpf || 'Não informado'}</p>
+              <p className="text-sm text-slate-500 dark:text-muted-foreground mb-1">CPF</p>
+              <p className="font-semibold text-slate-800 dark:text-foreground">{paciente?.cpf || 'Não informado'}</p>
             </div>
           </div>
         </div>

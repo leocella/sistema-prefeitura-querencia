@@ -31,7 +31,7 @@ export function SolicitacaoCard({ solicitacao, onStatusChange, disabled }: Solic
     : '--:--'
 
   return (
-    <Card className="hover:shadow-lg hover:border-slate-300 transition-all duration-300 bg-white/70 backdrop-blur-md relative overflow-hidden group">
+    <Card className="hover:shadow-lg hover:border-slate-300 dark:hover:border-border transition-all duration-300 bg-white/70 dark:bg-card backdrop-blur-md relative overflow-hidden group">
       {/* Decorative gradient based on status */}
       <div className={`absolute top-0 left-0 w-1 h-full ${
         solicitacao.status === 'solicitado' ? 'bg-slate-400' :
