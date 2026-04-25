@@ -1,14 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
 import { NovaSolicitacaoForm } from "./NovaSolicitacaoForm"
 
 export default async function NovaSolicitacaoPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect('/login')
-  }
+  // Página pública — não exige login
+  // O médico apenas gera/imprime o documento, não salva no banco
 
   const { data: prestadores } = await supabase
     .from('prestadores')
