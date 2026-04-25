@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { DashboardClient } from "./DashboardClient"
+import Link from "next/link"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -36,6 +37,14 @@ export default async function DashboardPage() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
+            <Link
+              href="/nova-solicitacao"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-md shadow-blue-200 transition-colors"
+            >
+              <span className="text-lg leading-none">+</span>
+              <span className="hidden sm:inline">Nova Solicitação</span>
+              <span className="sm:hidden">Novo</span>
+            </Link>
             <div className="text-right flex flex-col items-end">
               <span className="text-xs font-semibold text-primary uppercase tracking-wider">
                 {Array.isArray(prestador) ? prestador[0]?.nome : prestador?.nome || 'Administração Central'}
