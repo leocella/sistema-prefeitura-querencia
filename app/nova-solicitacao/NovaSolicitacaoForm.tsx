@@ -4,10 +4,9 @@ import { useState, useRef, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
-import { Printer, Search, FileText, User, Calendar, Building2, Stethoscope, FlaskConical, Check } from "lucide-react"
+import { Printer, Search, FileText, User, Stethoscope, Check } from "lucide-react"
 
 // ──────────────────────────────────────────────
 // Lista de exames organizados por categoria
@@ -338,15 +337,14 @@ export function NovaSolicitacaoForm({ prestadores }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label className="text-slate-600">Classificação *</Label>
-            <Select value={classificacao} onValueChange={(v) => setClassificacao(v as "internamento" | "emergencia")}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="internamento">🏥 Internamento</SelectItem>
-                <SelectItem value="emergencia">🚨 Emergência</SelectItem>
-              </SelectContent>
-            </Select>
+            <select
+              value={classificacao}
+              onChange={(e) => setClassificacao(e.target.value as "internamento" | "emergencia")}
+              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="internamento">🏥 Internamento</option>
+              <option value="emergencia">🚨 Emergência</option>
+            </select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="medico" className="text-slate-600">Médico Solicitante</Label>
@@ -359,19 +357,18 @@ export function NovaSolicitacaoForm({ prestadores }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label className="text-slate-600">Laboratório Executor *</Label>
-            <Select value={prestadorId} onValueChange={(v) => setPrestadorId(v || "")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o laboratório..." />
-              </SelectTrigger>
-              <SelectContent>
-                {prestadores.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    <FlaskConical className="w-4 h-4 inline mr-1.5 text-blue-500" />
-                    {p.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              value={prestadorId}
+              onChange={(e) => setPrestadorId(e.target.value)}
+              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="">Selecione o laboratório...</option>
+              {prestadores.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
