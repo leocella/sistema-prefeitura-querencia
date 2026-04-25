@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
-import { Printer, Search, FileText, User, Stethoscope, Check } from "lucide-react"
+import { Printer, Search, FileText, User, Stethoscope, Check, Loader2 } from "lucide-react"
+import { createClient } from "@/lib/supabase"
 
 // ──────────────────────────────────────────────
 // Lista de exames organizados por categoria
@@ -120,8 +121,12 @@ export function NovaSolicitacaoForm({ prestadores }: Props) {
   // ── Print ref ──
   const printRef = useRef<HTMLDivElement>(null)
 
-  // ── Generated flag ──
+  // ── Generated flag & saving state ──
   const [gerado, setGerado] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [codigoBarras, setCodigoBarras] = useState("")
+
+  const supabase = createClient()
 
   // ── Filtered exams ──
   const categoriasFiltradas = useMemo(() => {
@@ -160,7 +165,7 @@ export function NovaSolicitacaoForm({ prestadores }: Props) {
     setSelecionados(new Set())
   }
 
-  function handleGerar() {
+  async function handleGerar() {
     if (!nomePaciente.trim()) {
       toast.error("Informe o nome do paciente.")
       return
@@ -177,11 +182,87 @@ export function NovaSolicitacaoForm({ prestadores }: Props) {
       toast.error("Selecione pelo menos um exame.")
       return
     }
-    setGerado(true)
-    toast.success("Solicitação gerada! Clique em Imprimir para gerar o documento.")
-    setTimeout(() => {
-      document.getElementById("area-impressao")?.scrollIntoView({ behavior: "smooth" })
-    }, 200)
+
+    setIsSaving(true)
+
+    try {
+      // 1. Criar ou buscar paciente
+      const { data: pacienteExistente } = await supabase
+        .from('pacientes')
+        .select('id')
+        .eq('nome_completo', nomePaciente.trim())
+        .eq('data_nascimento', dataNascimento)
+        .maybeSingle()
+
+      let pacienteId = pacienteExistente?.id
+
+      if (!pacienteId) {
+        const { data: novoPaciente, error: errPaciente } = await supabase
+          .from('pacientes')
+          .insert({ nome_completo: nomePaciente.trim(), data_nascimento: dataNascimento })
+          .select('id')
+          .single()
+
+        if (errPaciente) throw errPaciente
+        pacienteId = novoPaciente.id
+      }
+
+      // 2. Gerar código de barras sequencial
+      const { count } = await supabase
+        .from('solicitacoes')
+        .select('*', { count: 'exact', head: true })
+
+      const seq = (count || 0) + 1
+      const codigo = `${740086 + seq}-${seq}`
+      setCodigoBarras(codigo)
+
+      // 3. Criar solicitação
+      const agora = new Date()
+      const { data: novaSolicitacao, error: errSolic } = await supabase
+        .from('solicitacoes')
+        .insert({
+          codigo_barras: codigo,
+          paciente_id: pacienteId,
+          prestador_id: prestadorId,
+          medico_solicitante: medicoSolicitante || 'Não informado',
+          solicitante_origem: 'Hospital',
+          data_prevista: agora.toISOString().split('T')[0],
+          hora_prevista: agora.toTimeString().split(' ')[0],
+          classificacao,
+          status: 'solicitado',
+          qtd_exames: selecionados.size,
+          qtd_realizados: 0,
+        })
+        .select('id')
+        .single()
+
+      if (errSolic) throw errSolic
+
+      // 4. Criar exames individuais
+      const examesParaInserir = Array.from(selecionados).map((nome) => ({
+        solicitacao_id: novaSolicitacao.id,
+        nome_exame: nome,
+        realizado: false,
+      }))
+
+      const { error: errExames } = await supabase
+        .from('exames')
+        .insert(examesParaInserir)
+
+      if (errExames) throw errExames
+
+      // 5. Sucesso
+      setGerado(true)
+      toast.success("Solicitação salva no sistema! Clique em Imprimir para gerar o documento.")
+      setTimeout(() => {
+        document.getElementById("area-impressao")?.scrollIntoView({ behavior: "smooth" })
+      }, 200)
+    } catch (error: any) {
+      console.error("Erro ao salvar solicitação:", error)
+      toast.error(error?.message || "Erro ao salvar a solicitação no sistema.")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   function handleImprimir() {
@@ -465,10 +546,25 @@ export function NovaSolicitacaoForm({ prestadores }: Props) {
         <Button
           size="lg"
           onClick={handleGerar}
-          className="bg-blue-600 hover:bg-blue-700 text-white gap-2 px-8 text-base shadow-lg shadow-blue-200"
+          disabled={isSaving || gerado}
+          className="bg-blue-600 hover:bg-blue-700 text-white gap-2 px-8 text-base shadow-lg shadow-blue-200 disabled:opacity-50"
         >
-          <FileText className="w-5 h-5" />
-          Gerar Solicitação
+          {isSaving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Salvando...
+            </>
+          ) : gerado ? (
+            <>
+              <Check className="w-5 h-5" />
+              Solicitação Salva
+            </>
+          ) : (
+            <>
+              <FileText className="w-5 h-5" />
+              Gerar e Salvar Solicitação
+            </>
+          )}
         </Button>
       </div>
 
