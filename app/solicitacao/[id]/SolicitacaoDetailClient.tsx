@@ -25,11 +25,7 @@ export function SolicitacaoDetailClient({ solicitacaoBase, examesList, prestador
 
   // Change overall status
   const handleStatusChange = async (newStatus: StatusExame) => {
-    if (newStatus === 'liberado' && !solicitacao.laudo_url) {
-      toast.error("Você precisa enviar um laudo para liberar o exame.")
-      return
-    }
-
+    // Validação de laudo removida a pedido do usuário
     setSolicitacao((prev: any) => ({ ...prev, status: newStatus }))
 
     try {
@@ -134,32 +130,7 @@ export function SolicitacaoDetailClient({ solicitacaoBase, examesList, prestador
         </div>
       </div>
 
-      {/* Upload Laudo Area */}
-      {solicitacao.laudo_url ? (
-        <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-6 text-center shadow-sm">
-          <h3 className="text-green-800 font-bold text-lg mb-2">Laudo Liberado</h3>
-          <p className="text-green-600/80 text-sm mb-4">Um laudo em PDF foi anexado a esta solicitação.</p>
-          <div className="flex gap-4 justify-center">
-            <a href={solicitacao.laudo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white shadow-md transition-colors">
-              <ExternalLink className="w-4 h-4" /> Visualizar Laudo Atual
-            </a>
-            <LaudoUpload 
-              solicitacaoId={solicitacao.id} 
-              onUploadSuccess={() => {
-                router.refresh()
-                setSolicitacao((prev: any) => ({ ...prev, status: 'liberado' }))
-              }} 
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="mb-10">
-          <LaudoUpload solicitacaoId={solicitacao.id} onUploadSuccess={() => {
-            router.refresh()
-            setSolicitacao((prev: any) => ({ ...prev, status: 'liberado' }))
-          }} />
-        </div>
-      )}
+      {/* Upload Laudo Area - Oculto temporariamente */}
     </div>
   )
 }
