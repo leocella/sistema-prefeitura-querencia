@@ -40,13 +40,29 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             {role === 'admin' && (
-              <Link
-                href="/admin/medicos"
-                className="inline-flex items-center gap-2 bg-slate-100 dark:bg-muted hover:bg-slate-200 dark:hover:bg-muted/80 text-slate-700 dark:text-foreground text-sm font-semibold px-4 py-2 rounded-lg transition-colors border border-slate-200 dark:border-border"
-              >
-                <span className="hidden sm:inline">Gestão de Médicos</span>
-                <span className="sm:hidden">Médicos</span>
-              </Link>
+              <>
+                <Link
+                  href="/admin/pacientes"
+                  className="inline-flex items-center gap-2 bg-slate-100 dark:bg-muted hover:bg-slate-200 dark:hover:bg-muted/80 text-slate-700 dark:text-foreground text-sm font-semibold px-4 py-2 rounded-lg transition-colors border border-slate-200 dark:border-border"
+                >
+                  <span className="hidden sm:inline">Pacientes</span>
+                  <span className="sm:hidden">Pac.</span>
+                </Link>
+                <Link
+                  href="/admin/medicos"
+                  className="inline-flex items-center gap-2 bg-slate-100 dark:bg-muted hover:bg-slate-200 dark:hover:bg-muted/80 text-slate-700 dark:text-foreground text-sm font-semibold px-4 py-2 rounded-lg transition-colors border border-slate-200 dark:border-border"
+                >
+                  <span className="hidden sm:inline">Médicos</span>
+                  <span className="sm:hidden">Méd.</span>
+                </Link>
+                <Link
+                  href="/admin/exames"
+                  className="inline-flex items-center gap-2 bg-slate-100 dark:bg-muted hover:bg-slate-200 dark:hover:bg-muted/80 text-slate-700 dark:text-foreground text-sm font-semibold px-4 py-2 rounded-lg transition-colors border border-slate-200 dark:border-border"
+                >
+                  <span className="hidden sm:inline">Exames</span>
+                  <span className="sm:hidden">Ex.</span>
+                </Link>
+              </>
             )}
             <Link
               href="/nova-solicitacao"

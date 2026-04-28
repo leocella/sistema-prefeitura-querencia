@@ -32,25 +32,33 @@ interface SelectedExame {
   valor: number
 }
 
+interface PacientePreCarregado {
+  id: string
+  nome_completo: string
+  data_nascimento: string
+  cpf: string | null
+}
+
 interface Props {
   prestadores: { id: string; nome: string }[]
   medicos: Medico[]
+  pacientePreCarregado?: PacientePreCarregado | null
 }
 
 const HORARIOS_COLETA = ["09:00", "14:00", "18:00", "20:30", "23:30", "🚨 Emergência — Coletar Agora"]
 
-export function NovaSolicitacaoForm({ prestadores, medicos }: Props) {
-  const [etapa, setEtapa] = useState<1 | 2 | 3>(1)
+export function NovaSolicitacaoForm({ prestadores, medicos, pacientePreCarregado }: Props) {
+  const [etapa, setEtapa] = useState<1 | 2 | 3>(pacientePreCarregado ? 2 : 1)
   
   // ── Data ──
   const [catalogo, setCatalogo] = useState<CatalogoExame[]>([])
   const [isLoadingCatalogo, setIsLoadingCatalogo] = useState(true)
 
   // ── Patient data (Etapa 1) ──
-  const [nomePaciente, setNomePaciente] = useState("")
-  const [dataNascimento, setDataNascimento] = useState("")
-  const [cpf, setCpf] = useState("")
-  const [pacienteId, setPacienteId] = useState<string | null>(null)
+  const [nomePaciente, setNomePaciente] = useState(pacientePreCarregado?.nome_completo || "")
+  const [dataNascimento, setDataNascimento] = useState(pacientePreCarregado?.data_nascimento || "")
+  const [cpf, setCpf] = useState(pacientePreCarregado?.cpf || "")
+  const [pacienteId, setPacienteId] = useState<string | null>(pacientePreCarregado?.id || null)
   
   // ── History ──
   const idadeCalculada = dataNascimento ? calcularIdade(dataNascimento) : null
@@ -266,10 +274,10 @@ export function NovaSolicitacaoForm({ prestadores, medicos }: Props) {
         setPacienteId(currentPacienteId)
       }
 
-      // 2. Gerar código de barras sequencial
-      const { count } = await supabase.from('solicitacoes').select('*', { count: 'exact', head: true })
-      const seq = (count || 0) + 1
-      const codigo = `${740086 + seq}-${seq}`
+      // 2. Gerar código de barras único (timestamp + random)
+      const ts = Date.now().toString().slice(-6)
+      const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
+      const codigo = `${ts}${rand}`
       setCodigoBarras(codigo)
 
       // 3. Criar solicitação
